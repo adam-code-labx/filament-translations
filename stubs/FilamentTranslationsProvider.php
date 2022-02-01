@@ -1,6 +1,6 @@
 <?php
 
-namespace io3x1\FilamentTranslations;
+namespace App\Providers;
 
 use Filament\PluginServiceProvider;
 use Filament\Navigation\NavigationItem;
@@ -22,7 +22,7 @@ class FilamentTranslationsProvider extends PluginServiceProvider
             NavigationItem::make()
                 ->group('Translations')
                 ->icon('heroicon-o-translate')
-                ->label('Change Language')
+                ->label('Change Language Override')
                 ->sort(10)
                 ->url(url('admin/change')),
         ]);
@@ -30,15 +30,5 @@ class FilamentTranslationsProvider extends PluginServiceProvider
         Filament::registerNavigationGroups([
             'Translations'
         ]);
-
-        $this->publishes([
-            __DIR__ . '/../database/migrations' => base_path('database/migrations'),
-            __DIR__ . '/../publish' => app_path(),
-            __DIR__ . '/../config' => config_path(),
-            __DIR__ . '/../resources' => resource_path(),
-            __DIR__ . '/../stubs/FilamentTranslationsProvider.php' => app_path('Providers/FilamentTranslationsProvider.php'),
-        ], 'filament-translations');
-
-        $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
     }
 }
