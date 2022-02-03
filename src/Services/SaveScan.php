@@ -3,6 +3,7 @@
 namespace io3x1\FilamentTranslations\Services;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Lang;
 use io3x1\FilamentTranslations\Services\Scan;
 use io3x1\FilamentTranslations\Models\Translation;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ class SaveScan
             $scanner->addScannedPath($path);
         });
 
-        list($trans, $__) = $scanner->getAllViewFilesWithTranslations();
+        [$trans, $__] = $scanner->getAllViewFilesWithTranslations();
 
         /** @var Collection $trans */
         /** @var Collection $__ */
@@ -36,13 +37,13 @@ class SaveScan
                 ]);
 
             $trans->each(function ($trans) {
-                list($group, $key) = explode('.', $trans, 2);
+                [$group, $key] = explode('.', $trans, 2);
                 $namespaceAndGroup = explode('::', $group, 2);
                 if (count($namespaceAndGroup) === 1) {
                     $namespace = '*';
                     $group = $namespaceAndGroup[0];
                 } else {
-                    list($namespace, $group) = $namespaceAndGroup;
+                    [$namespace, $group] = $namespaceAndGroup;
                 }
                 $this->createOrUpdate($namespace, $group, $key);
             });
@@ -74,17 +75,34 @@ class SaveScan
                 $translation->restore();
             }
         } else {
+
+
             $translation = Translation::make([
                 'namespace' => $namespace,
                 'group' => $group,
                 'key' => $key,
-                'text' => [],
             ]);
+
+            $translation->text = $this->getTranslationFromJsonArray($translation);
 
             if (!$this->isCurrentTransForTranslationArray($translation, $defaultLocale)) {
                 $translation->save();
             }
         }
+    }
+
+    /**
+     * @param Translation $translation
+     * @param $locale
+     * @return array
+     */
+    private function getTranslationFromJsonArray(Translation $translation): array
+    {
+        $locales = config('filament-translations.locals');
+
+        return collect($locales)->flatMap(
+            fn($locale) => [$locale => $this->getJsonTranslationByLocale($translation, $locale)]
+        )->filter()->toArray();
     }
 
     /**
@@ -98,10 +116,26 @@ class SaveScan
             return is_array(__($translation->key, [], $locale));
         }
 
-        if ($translation->namespace === '*') {
+        if (!$translation->namespace && $translation->namespace === '*') {
             return is_array(trans($translation->group . '.' . $translation->key, [], $locale));
         }
 
         return is_array(trans($translation->namespace . '::' . $translation->group . '.' . $translation->key, [], $locale));
+    }
+
+    /**
+     * @param Translation $translation
+     * @param $locale
+     * @return string
+     */
+    private function getJsonTranslationByLocale(Translation $translation, string $locale): string
+    {
+        if (!$translation->namespace || $translation->namespace === '*') {
+            $key = $translation->group . '.' . $translation->key;
+            $value = trans($translation->group . '.' . $translation->key, [], $locale);
+            return $key !== $value ? $value : '';
+        }
+
+        return '';
     }
 }
